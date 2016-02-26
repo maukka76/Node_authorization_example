@@ -1,26 +1,10 @@
 var app = require('express')();
 var session = require('express-session');
-var mongoose = require('mongoose');
 //npm install acl
 var acl = require('acl');
-
-var mongodb_connection_string = 'mongodb://127.0.0.1:27017/acl';
-
-var dbconn = mongoose.connect(mongodb_connection_string,function(err,ok){
-	
-	if(err){
-		
-		console.log(err.message);
-	}else{
-		console.log('We are connected');
-		acl = new acl(new acl.mongodbBackend(dbconn.connection.db, "acl_"));
-		builAuthorization();
-		
-	}
-});
-
-function builAuthorization(){
-	
+var conn = require('./database').connect(builAuthorization);
+function builAuthorization(dbconn){
+	acl = new acl(new acl.mongodbBackend(dbconn.connection.db, "acl_"));
 	acl.allow([
     {
         roles:['guest','member','admin'],
@@ -53,8 +37,6 @@ app.use(session({
 }));
 
 app.use(function(req,res,next){
-
-	console.log(acl);
 	req.session.userId = 'jim';
 	acl.allowedPermissions('jim', ['blogs','forums'], function(err, permissions){
     	console.log(permissions)
@@ -62,14 +44,6 @@ app.use(function(req,res,next){
 	next();
 });
 
-
-app.get('/role',function(req,res){
-	
-	acl.userRoles(req.session.userId, function(err, roles) )  {
-		
-		res.send(roles);
-	}); 
-});
 
 app.get('/forums',function(req,res,next){
 	acl.isAllowed(req.session.userId, 'forums', ['get'],function(err,ok){
@@ -83,11 +57,6 @@ app.get('/forums',function(req,res,next){
 	
 });
 
-app.get('/blogs',acl.middleware(),function(){
-	
-	res.send('You are authorized');
-});
-/*
 app.get('/blogs',function(req,res,next){
 	acl.isAllowed(req.session.userId, 'blogs', ['get'],function(err,ok){
 		console.log(err);
@@ -97,7 +66,7 @@ app.get('/blogs',function(req,res,next){
 			res.send('Not authorized');
 	});
 	
-});*/
+});
 
 
 
